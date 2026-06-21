@@ -1,0 +1,22 @@
+# GitHub Pages site for agentready — the SEO / organic-discovery surface.
+# Serves from /docs on the published branch. Renders with the github-pages gem,
+# which bundles jekyll-seo-tag (meta/OpenGraph from page front matter) and
+# jekyll-sitemap (auto sitemap.xml). Project-page theme: cayman.
+title: agentready
+description: >-
+  Audit your repository for AI-coding-agent readiness. agentready scores how well
+  Claude Code, Copilot, Cursor, and other coding agents can work in your repo (0–100)
+  and tells you exactly what to fix — a free, zero-dependency CLI and GitHub Action.
+url: https://pilotless-labs.github.io
+baseurl: /agentready
+lang: en
+author: Pilotless Labs
+theme: jekyll-theme-cayman
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+# Cayman header buttons
+show_downloads: false
+github:
+  repository_url: https://github.com/Pilotless-Labs/agentready
+  is_project_page: true

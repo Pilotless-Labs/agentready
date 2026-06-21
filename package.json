@@ -1,0 +1,25 @@
+{
+  "name": "agentready",
+  "version": "0.1.0",
+  "description": "Audit a repository for AI-coding-agent readiness. Like a linter, but for how well agents can work in your repo.",
+  "type": "module",
+  "bin": {
+    "agentready": "bin/agentready.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "coding-agents",
+    "claude-code",
+    "copilot",
+    "lint",
+    "repo-quality",
+    "developer-tools"
+  ]
+}

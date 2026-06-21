@@ -1,0 +1,57 @@
+name: 'agentready'
+description: 'Audit your repository for AI-coding-agent readiness. Gate CI on the score and/or refresh the README score badge.'
+author: 'Pilotless Labs'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  path:
+    description: 'Path to the repository to audit.'
+    required: false
+    default: '.'
+  min-score:
+    description: 'Fail the job if the score is below this (0-100). Empty means do not gate.'
+    required: false
+    default: ''
+  badge:
+    description: 'If "true", (re)write agentready-badge.svg at the repo root so you can commit an up-to-date badge.'
+    required: false
+    default: 'false'
+  comment:
+    description: 'If "true", post (and keep updating) the agentready score as a comment on pull requests. Requires permissions: pull-requests: write.'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Run agentready
+      shell: bash
+      env:
+        AR_PATH: ${{ inputs.path }}
+        AR_BADGE: ${{ inputs.badge }}
+      run: |
+        node "$GITHUB_ACTION_PATH/bin/agentready.js" "$AR_PATH"
+        if [ "$AR_BADGE" = "true" ]; then
+          node "$GITHUB_ACTION_PATH/bin/agentready.js" badge "$AR_PATH" --write
+        fi
+    - name: Comment score on the pull request
+      if: ${{ inputs.comment == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        AR_PATH: ${{ inputs.path }}
+        AR_PR_NUMBER: ${{ github.event.pull_request.number }}
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: node "$GITHUB_ACTION_PATH/lib/pr-comment.js"
+    - name: Gate on minimum score
+      if: ${{ inputs.min-score != '' }}
+      shell: bash
+      env:
+        AR_PATH: ${{ inputs.path }}
+        AR_MIN_SCORE: ${{ inputs.min-score }}
+      run: node "$GITHUB_ACTION_PATH/bin/agentready.js" "$AR_PATH" --min-score "$AR_MIN_SCORE"
