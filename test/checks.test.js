@@ -58,6 +58,43 @@ test('agent-instructions: GEMINI.md / .cursorrules count as instruction files', 
   }
 });
 
+test('agent-instructions: directory rule sets (.cursor/rules, .clinerules) count as instructions', () => {
+  // Newer agents keep instructions in a *directory* of rule files: Cursor's
+  // `.cursor/rules/*.mdc`, Cline's `.clinerules/`. A repo whose only agent
+  // instructions live there used to be graded as having none — a 0 on the
+  // heaviest check (real bites: micronaut-spring 51/F on a substantive
+  // `.clinerules/`; HappydanceLabs/umbraco-mcp-server 36/F on 5.7k words of
+  // `.cursor/rules/`).
+  const body =
+    'How to verify changes: run the suite with make test before pushing. Build everything with make, and use make setup for a fresh install. Directory structure: src/ holds the modules and docs/ the manual. Conventions: gofmt style, table-driven tests preferred everywhere.';
+  const cursor = agentInstructions.run(ctxFor({ '.cursor/rules/main.mdc': `---\nalwaysApply: true\n---\n${body}` }));
+  assert.equal(cursor.score, 1, `.cursor/rules should be full credit: ${cursor.details}`);
+  assert.match(cursor.details, /\.cursor\/rules\/ \(1 rule file\)/);
+
+  const cline = agentInstructions.run(ctxFor({ '.clinerules/coding.md': body, '.clinerules/docs.md': body }));
+  assert.equal(cline.score, 1, `.clinerules/ dir should be full credit: ${cline.details}`);
+  assert.match(cline.details, /\.clinerules\/ \(2 rule files\)/);
+});
+
+test('agent-instructions: .clinerules single-file form counts as instructions', () => {
+  // Cline allows `.clinerules` as a file *or* a directory — resolve by shape.
+  const body =
+    'How to verify changes: run the suite with make test before pushing. Build everything with make, and use make setup for a fresh install. Directory structure: src/ holds the modules and docs/ the manual. Conventions: gofmt style, table-driven tests preferred everywhere.';
+  const r = agentInstructions.run(ctxFor({ '.clinerules': body }));
+  assert.equal(r.score, 1, `.clinerules file should be full credit: ${r.details}`);
+  assert.match(r.details, /\.clinerules/);
+});
+
+test('instructions-accuracy: references inside a .cursor/rules rule file are verified', () => {
+  const r = instructionsAccuracy.run(ctxFor({
+    '.cursor/rules/build.mdc': '---\nglobs: "**/*.js"\n---\nRun `npm test`. Entry point is `src/main.js`.',
+    'package.json': JSON.stringify({ scripts: { test: 'node --test' } }),
+    'src/main.js': 'x',
+  }));
+  assert.equal(r.score, 1, `${r.details}`);
+  assert.match(r.details, /\.cursor\/rules/);
+});
+
 test('test-runnability: tests without a command is half credit', () => {
   const r = testRunnability.run(ctxFor({ 'tests/foo_test.py': 'def test_x(): pass' }));
   assert.equal(r.score, 0.5);

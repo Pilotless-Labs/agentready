@@ -11,6 +11,19 @@ is still pending (see README). History below is by build date.
 
 ### 2026-06-21 (latest)
 
+- **Accuracy — directory-based agent-rule sets (`.cursor/rules/`, `.clinerules/`, `.windsurf/rules/`)
+  now count as agent-instructions.** The agent-instructions check (highest-weighted, 25 pts) and
+  instructions-accuracy recognized only single-file conventions, so a repo whose only agent
+  instructions live in a *directory* of rule files — Cursor's `.cursor/rules/*.mdc`, Cline's
+  `.clinerules/` (file *or* directory), Windsurf's `.windsurf/rules/` — was graded as if it had
+  *none*, a 0 on the heaviest check. Real bites: `micronaut-projects/micronaut-spring` (substantive
+  `.clinerules/`) **51/F → 80/B** (agent-instructions 0% → 100%); `HappydanceLabs/umbraco-mcp-server`
+  (5.7k words of `.cursor/rules/`) **36/F → 56/F** (and accuracy now correctly flags its genuinely
+  stale `npm run lint` reference). Both checks and the `fix` planner now resolve their file set
+  through one shared `findInstructionFiles()` so they can't drift; directory rule sets expand to
+  their rule files (recursively), `.clinerules` is resolved by shape. 94 → 97 tests; self-audits
+  unchanged (dough 96/A, product 100/A).
+
 - **Accuracy — `GEMINI.md`, `.cursorrules`, and `.windsurfrules` now count as agent-instructions
   files.** The agent-instructions check (the highest-weighted, 25 pts) and the
   instructions-accuracy check recognized only `CLAUDE.md`, `AGENTS.md`, and
@@ -20,7 +33,7 @@ is still pending (see README). History below is by build date.
   yet was graded agent-instructions **0% → 100%** and overall **63/D → 93/A**. The recognized set
   now mirrors the companion tool ctxcost's catalog of single-file conventions (extracted to one
   shared list so the two checks can't drift). Directory-based rule sets (`.cursor/rules/`,
-  `.clinerules/`) remain a follow-up. 92 → 94 tests; self-audits unchanged (dough 96/A, product 100/A).
+  `.clinerules/`) followed in the entry above. 92 → 94 tests; self-audits unchanged (dough 96/A, product 100/A).
 
 - **Accuracy — `Installation`/`Installing`/`Set up` headers and `go get` now count as
   install instructions.** The documentation-structure check looked for the install/setup
