@@ -743,6 +743,24 @@ test('docs-structure: a Go `go get` line counts as install instructions (httprou
   assert.match(r.details, /3\/3 core elements/, `\`go get\` must count as install instructions: ${r.details}`);
 });
 
+test('docs-structure: a Rust `[dependencies]` block / `cargo add` counts as install instructions (tokio/serde/clap)', () => {
+  // Rust *libraries* document setup as "add this to your Cargo.toml" — a
+  // `[dependencies]` block — or `cargo add <crate>`, with no literal "install"
+  // word (you depend on a crate, you don't install it). tokio, serde, rayon and
+  // clap all do exactly this and were misgraded 2/3 before (the Rust analog of
+  // the `go get` gap above).
+  const depsBlock = '# tokio\n\nAn event-driven, non-blocking I/O platform for writing asynchronous applications, described here with plenty of descriptive words to clear the README minimum-substance bar.\n\nAdd this to your `Cargo.toml`:\n\n```toml\n[dependencies]\ntokio = { version = "1", features = ["full"] }\n```\n\n## Usage\n\n```rust\nfn main() {}\n```\n';
+  // Sanity: no literal "install"/"setup" stem — only the `[dependencies]` block carries it.
+  assert.ok(!/\b(install|setup)\b/i.test(depsBlock), 'fixture must rely solely on the [dependencies] block');
+  const rDeps = docsStructure.run(ctxFor({ 'README.md': depsBlock }));
+  assert.match(rDeps.details, /3\/3 core elements/, `[dependencies] block must count as install: ${rDeps.details}`);
+
+  const cargoAdd = '# clap\n\nA simple to use, efficient, and full-featured command line argument parser, described with enough words here to comfortably clear the minimum-substance bar for a README.\n\n```\n$ cargo add clap\n```\n\n## Usage\n\n```rust\nfn main() {}\n```\n';
+  assert.ok(!/\b(install|setup)\b/i.test(cargoAdd), 'fixture must rely solely on `cargo add`');
+  const rAdd = docsStructure.run(ctxFor({ 'README.md': cargoAdd }));
+  assert.match(rAdd.details, /3\/3 core elements/, `\`cargo add\` must count as install: ${rAdd.details}`);
+});
+
 test('context: huge monorepos still surface root files and top-level dirs (BFS, #50)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentready-big-'));
   // A README + manifest at root, a real test under a top-level test/ dir, and an

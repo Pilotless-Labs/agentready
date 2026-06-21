@@ -11,6 +11,16 @@ is still pending (see README). History below is by build date.
 
 ### 2026-06-21 (latest)
 
+- **Accuracy — Rust install conventions (`[dependencies]` block / `cargo add`) now count as
+  install instructions.** docs-structure's install/setup signal recognized morphological
+  "install"/"setup" variants and Go's `go get`, but not the way Rust *libraries* document setup:
+  "add this to your `Cargo.toml`" — a `[dependencies]` block — or `cargo add <crate>` (you depend
+  on a crate, you don't "install" it). So flagship crates were misgraded as missing install
+  instructions: **tokio**, **serde**, **rayon** and **clap** all show only a `[dependencies]`
+  block / `cargo add` and read as 2/3 core elements. Now matched (the Rust analog of the `go get`
+  fix), bringing each to 3/3; `click`, which genuinely omits an install section, correctly stays
+  2/3 (no false-positive flip). tokio docs-structure 0.83 → 1.0. 97 → 98 tests; self-audits
+  unchanged (dough 96/A, product 100/A).
 - **Accuracy — directory-based agent-rule sets (`.cursor/rules/`, `.clinerules/`, `.windsurf/rules/`)
   now count as agent-instructions.** The agent-instructions check (highest-weighted, 25 pts) and
   instructions-accuracy recognized only single-file conventions, so a repo whose only agent
