@@ -11,6 +11,17 @@ is still pending (see README). History below is by build date.
 
 ### 2026-06-21 (latest)
 
+- **Accuracy — `GEMINI.md`, `.cursorrules`, and `.windsurfrules` now count as agent-instructions
+  files.** The agent-instructions check (the highest-weighted, 25 pts) and the
+  instructions-accuracy check recognized only `CLAUDE.md`, `AGENTS.md`, and
+  `.github/copilot-instructions.md` — so a repo whose agent instructions live in a `GEMINI.md`
+  (Gemini CLI) or `.cursorrules`/`.windsurfrules` (Cursor/Windsurf) was graded as if it had *no*
+  instructions at all. Real bite: `google-gemini/gemini-cli` ships a complete 96-line `GEMINI.md`
+  yet was graded agent-instructions **0% → 100%** and overall **63/D → 93/A**. The recognized set
+  now mirrors the companion tool ctxcost's catalog of single-file conventions (extracted to one
+  shared list so the two checks can't drift). Directory-based rule sets (`.cursor/rules/`,
+  `.clinerules/`) remain a follow-up. 92 → 94 tests; self-audits unchanged (dough 96/A, product 100/A).
+
 - **Accuracy — `Installation`/`Installing`/`Set up` headers and `go get` now count as
   install instructions.** The documentation-structure check looked for the install/setup
   signal with the bare stems `install`/`setup`, which silently missed the two most common

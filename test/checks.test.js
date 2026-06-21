@@ -44,6 +44,20 @@ test('agent-instructions: topic coverage raises the score', () => {
   assert.equal(full.fix, null);
 });
 
+test('agent-instructions: GEMINI.md / .cursorrules count as instruction files', () => {
+  // A repo whose agent instructions live in GEMINI.md (Gemini CLI) or
+  // .cursorrules (Cursor) — no CLAUDE.md/AGENTS.md — is just as agent-ready and
+  // must not be graded as if it had none (real bite: google-gemini/gemini-cli
+  // graded agent-instructions 0%, overall 63/D, on a complete 96-line GEMINI.md).
+  const body =
+    'How to verify changes: run the suite with make test before pushing. Build everything with make, and use make setup for a fresh install. Directory structure: src/ holds the modules and docs/ the manual. Conventions: gofmt style, table-driven tests preferred everywhere.';
+  for (const file of ['GEMINI.md', '.cursorrules', '.windsurfrules']) {
+    const r = agentInstructions.run(ctxFor({ [file]: body }));
+    assert.equal(r.score, 1, `${file} should be a full-credit instructions file: ${r.details}`);
+    assert.match(r.details, new RegExp(file.replace('.', '\\.')));
+  }
+});
+
 test('test-runnability: tests without a command is half credit', () => {
   const r = testRunnability.run(ctxFor({ 'tests/foo_test.py': 'def test_x(): pass' }));
   assert.equal(r.score, 0.5);
@@ -545,6 +559,16 @@ test('instructions-accuracy: stale references drag the score down and are named'
   assert.match(r.details, /npm run ci/);
   assert.match(r.details, /src\/main\.js/);
   assert.match(r.fix, /match the repo/);
+});
+
+test('instructions-accuracy: references in a GEMINI.md are verified too', () => {
+  const r = instructionsAccuracy.run(ctxFor({
+    'GEMINI.md': 'Run `npm test`. Entry point is `src/main.js`.',
+    'package.json': JSON.stringify({ scripts: { test: 'node --test' } }),
+    'src/main.js': 'x',
+  }));
+  assert.equal(r.score, 1, `${r.details}`);
+  assert.match(r.details, /GEMINI\.md/);
 });
 
 test('agent-instructions: unfilled TODO placeholders are discounted', () => {
