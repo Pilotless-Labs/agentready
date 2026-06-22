@@ -557,6 +557,16 @@ test('ci-config: gradle build and mvn install count as running the tests', () =>
   assert.equal(maven.score, 1, `mvn install runs the test phase: ${maven.details}`);
 });
 
+test('ci-config: nox sessions count as running the tests, citing the primary file (alembic)', () => {
+  const r = ciConfig.run(ctxFor({
+    '.github/workflows/run-on-pr.yaml': 'jobs:\n  run-test:\n    steps:\n      - name: Run tests\n        run: nox -t py-sqla20\n',
+    '.github/workflows/run-test.yaml': 'jobs:\n  run-test:\n    steps:\n      - name: Run tests\n        run: nox -t py-sqla20\n',
+  }));
+  assert.equal(r.score, 1, `nox runs the suite: ${r.details}`);
+  // both files match; the citation prefers the primary `run-test.yaml`, not `run-on-pr.yaml`.
+  assert.match(r.details, /run-test\.yaml/);
+});
+
 test('instructions-accuracy: missing instructions file cannot be verified', () => {
   const r = instructionsAccuracy.run(ctxFor({}));
   assert.equal(r.score, 0.5);
