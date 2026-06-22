@@ -830,6 +830,29 @@ test('ci-config: a workflow named "Testing" running a default task counts (sinat
   assert.equal(releaseOnly.score, 0.6, releaseOnly.details);
 });
 
+test('ci-config: a "Test PyPI" publish job does not shadow the real Tests workflow (requests)', () => {
+  // Real misgrade (psf/requests): the suite runs in run-tests.yml (`name: Tests`,
+  // step "Run tests" -> `make ci`, an unrecognized command, so the 0.9 band). The
+  // publish workflow has a `test-pypi-only:` workflow_dispatch input (Test PyPI
+  // trusted-publishing — near-universal in Python releases), which the test-job
+  // heuristic wrongly read as a test job. publish.yml sorts before run-tests.yml,
+  // so it shadowed the real test workflow and got cited as the test config.
+  const r = ciConfig.run(ctxFor({
+    '.github/workflows/publish.yml': 'name: Publish to PyPI\non:\n  workflow_dispatch:\n    inputs:\n      test-pypi-only:\n        description: "Publish to Test PyPI only"\njobs:\n  build:\n    steps:\n      - run: python -m build\n',
+    '.github/workflows/run-tests.yml': 'name: Tests\non:\n  push:\njobs:\n  test:\n    steps:\n      - name: Run tests\n        run: make ci\n',
+  }));
+  assert.equal(r.score, 0.9, r.details);
+  assert.match(r.details, /run-tests\.yml/);
+
+  // Guard: a repo whose CI only publishes to Test PyPI (no real test run) is NOT
+  // credited with a test job — it drops to the 0.6 "no test run detected" band,
+  // not 0.9, instead of the Test-PyPI input falsely lifting it.
+  const publishOnly = ciConfig.run(ctxFor({
+    '.github/workflows/publish.yml': 'name: Publish to PyPI\non:\n  workflow_dispatch:\n    inputs:\n      test-pypi-only:\n        description: "Publish to Test PyPI only"\njobs:\n  publish-test-pypi:\n    steps:\n      - run: python -m build\n',
+  }));
+  assert.equal(publishOnly.score, 0.6, publishOnly.details);
+});
+
 test('test-runnability: "npm install" in a README does not document `npm test`', () => {
   const base = {
     'package.json': JSON.stringify({ scripts: { test: 'node --test' } }),
