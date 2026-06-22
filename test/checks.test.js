@@ -853,6 +853,38 @@ test('ci-config: a "Test PyPI" publish job does not shadow the real Tests workfl
   assert.equal(publishOnly.score, 0.6, publishOnly.details);
 });
 
+test('ci-config: a secondary test workflow does not shadow the primary one in the citation', () => {
+  // Real misgrade (psf/black, sympy/sympy): mature repos carry fuzz / emscripten /
+  // nightly workflows that also invoke a test runner (`tox -e fuzz`, pytest under
+  // Pyodide) and sort alphabetically BEFORE the canonical test.yml / runtests.yml.
+  // A bare first-match cited the secondary file, sending an agent to the fuzzer.
+  // The score is right (1.0 — CI does run tests); the citation must name the suite.
+  const black = ciConfig.run(ctxFor({
+    '.github/workflows/fuzz.yml': 'name: fuzz\njobs:\n  fuzz:\n    steps:\n      - run: tox -e fuzz\n',
+    '.github/workflows/test.yml': 'name: Test\njobs:\n  main:\n    steps:\n      - run: tox -e ci-py312\n',
+  }));
+  assert.equal(black.score, 1, black.details);
+  assert.match(black.details, /test\.yml/);
+  assert.doesNotMatch(black.details, /fuzz/);
+
+  // sympy: the Pyodide/emscripten workflow runs the suite under wasm and sorts
+  // first; runtests.yml is the primary `name: test` suite running `pytest`.
+  const sympy = ciConfig.run(ctxFor({
+    '.github/workflows/emscripten.yml': 'name: Pyodide\njobs:\n  build:\n    steps:\n      - run: pytest\n',
+    '.github/workflows/runtests.yml': 'name: test\njobs:\n  tests:\n    steps:\n      - run: pytest -n auto\n',
+  }));
+  assert.equal(sympy.score, 1, sympy.details);
+  assert.match(sympy.details, /runtests\.yml/);
+
+  // Guard: when the ONLY test-running workflow is secondary-named, it is still
+  // cited (fall-through) — no false "no test run" downgrade.
+  const onlyFuzz = ciConfig.run(ctxFor({
+    '.github/workflows/fuzz.yml': 'name: fuzz\njobs:\n  fuzz:\n    steps:\n      - run: pytest\n',
+  }));
+  assert.equal(onlyFuzz.score, 1, onlyFuzz.details);
+  assert.match(onlyFuzz.details, /fuzz\.yml/);
+});
+
 test('test-runnability: "npm install" in a README does not document `npm test`', () => {
   const base = {
     'package.json': JSON.stringify({ scripts: { test: 'node --test' } }),
