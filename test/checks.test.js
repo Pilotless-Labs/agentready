@@ -893,6 +893,21 @@ test('ci-config: a secondary test workflow does not shadow the primary one in th
   }));
   assert.equal(onlyFuzz.score, 1, onlyFuzz.details);
   assert.match(onlyFuzz.details, /fuzz\.yml/);
+
+  // Real misgrade (pytest-dev/pytest): a basename can match BOTH families —
+  // `doc-check-links` matches PRIMARY via the `checks?` token AND SECONDARY via
+  // `docs?`. It's a scheduled sphinx link-checker (`tox -e docs-checklinks`) that
+  // sorts BEFORE the genuine `test.yml` (`tox` test envs, `name: test`), so the
+  // old "first primary" rule cited the link-checker as the test suite. A config
+  // that is primary AND not also secondary must outrank one that merely matches
+  // primary. Score is right (1.0 — tox does run); the citation must name test.yml.
+  const pytest = ciConfig.run(ctxFor({
+    '.github/workflows/doc-check-links.yml': 'name: Doc Check Links\njobs:\n  doc-check-links:\n    steps:\n      - run: tox -e docs-checklinks\n',
+    '.github/workflows/test.yml': 'name: test\njobs:\n  test:\n    steps:\n      - run: tox -e py313\n',
+  }));
+  assert.equal(pytest.score, 1, pytest.details);
+  assert.match(pytest.details, /test\.yml/);
+  assert.doesNotMatch(pytest.details, /doc-check-links/);
 });
 
 test('test-runnability: "npm install" in a README does not document `npm test`', () => {
