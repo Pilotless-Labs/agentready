@@ -640,6 +640,28 @@ test('instructions-accuracy: gitignored generated/dep dirs are not stale referen
   assert.doesNotMatch(stale.details, /dist/);
 });
 
+test('instructions-accuracy: scoped npm package names are not stale paths', () => {
+  // `@ai-sdk/provider` / `@vitejs/plugin-legacy` / `@biomejs/biome` (real
+  // vercel/ai, vitejs/vite, biomejs/biome instruction files) are published
+  // package names, not working-tree paths — naming a dependency you publish or
+  // depend on is a correct claim, not a stale reference.
+  const r = instructionsAccuracy.run(ctxFor({
+    'AGENTS.md': 'This monorepo publishes `@ai-sdk/provider` and `@ai-sdk/openai`; the core lives in `src/index.ts`.',
+    'src/index.ts': 'x',
+  }));
+  assert.equal(r.score, 1, `${r.details}`);
+  assert.match(r.details, /resolve|no verifiable/);
+  // A real missing path is still caught, and a subpath form (`@scope/n/sub`,
+  // two slashes) is left to the normal path check (here it resolves).
+  const stale = instructionsAccuracy.run(ctxFor({
+    'AGENTS.md': 'Depends on `@scope/pkg`; config in `@scope/pkg/config.json`; entry `src/gone.ts`.',
+    '@scope/pkg/config.json': 'x',
+  }));
+  assert.ok(stale.score < 1, `got ${stale.score}`);
+  assert.match(stale.details, /src\/gone\.ts/);
+  assert.doesNotMatch(stale.details, /@scope\/pkg`/);
+});
+
 test('instructions-accuracy: references in a GEMINI.md are verified too', () => {
   const r = instructionsAccuracy.run(ctxFor({
     'GEMINI.md': 'Run `npm test`. Entry point is `src/main.js`.',
