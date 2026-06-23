@@ -608,6 +608,17 @@ test('instructions-accuracy: stale references drag the score down and are named'
   assert.match(r.fix, /match the repo/);
 });
 
+test('instructions-accuracy: ellipsis wildcards are not treated as literal paths', () => {
+  // `it/...` ("integration tests at `it/...`", real uv AGENTS.md) and Go's
+  // package wildcard `cmd/...` are illustrative patterns, not path claims —
+  // they must not be graded as stale references.
+  const r = instructionsAccuracy.run(ctxFor({
+    'AGENTS.md': 'PREFER integration tests, e.g. at `it/...` over unit tests. Lint with `go vet ./...`; sources in `cmd/...`.',
+  }));
+  assert.equal(r.score, 1, `${r.details}`);
+  assert.match(r.details, /no verifiable path\/command references/);
+});
+
 test('instructions-accuracy: references in a GEMINI.md are verified too', () => {
   const r = instructionsAccuracy.run(ctxFor({
     'GEMINI.md': 'Run `npm test`. Entry point is `src/main.js`.',
