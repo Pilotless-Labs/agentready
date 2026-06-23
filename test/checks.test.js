@@ -619,6 +619,27 @@ test('instructions-accuracy: ellipsis wildcards are not treated as literal paths
   assert.match(r.details, /no verifiable path\/command references/);
 });
 
+test('instructions-accuracy: gitignored generated/dep dirs are not stale references', () => {
+  // `dist/` and `node_modules/` (real astro AGENTS.md) are generated/installed
+  // dirs the repo gitignores — absent in a fresh checkout by design, so naming
+  // where build output and deps live is a correct claim, not a stale one.
+  const r = instructionsAccuracy.run(ctxFor({
+    'AGENTS.md': 'Build output lands in `dist/`; deps install to `node_modules/`. Source is in `src/lib/`.',
+    '.gitignore': 'node_modules/\ndist/\n*.log\n',
+    'src/lib/a.js': 'x',
+  }));
+  assert.equal(r.score, 1, `${r.details}`);
+  assert.match(r.details, /resolve|no verifiable/);
+  // A non-gitignored missing path is still caught.
+  const stale = instructionsAccuracy.run(ctxFor({
+    'AGENTS.md': 'Build output in `dist/`; entry point `src/gone.js`.',
+    '.gitignore': 'dist/\n',
+  }));
+  assert.ok(stale.score < 1, `got ${stale.score}`);
+  assert.match(stale.details, /src\/gone\.js/);
+  assert.doesNotMatch(stale.details, /dist/);
+});
+
 test('instructions-accuracy: references in a GEMINI.md are verified too', () => {
   const r = instructionsAccuracy.run(ctxFor({
     'GEMINI.md': 'Run `npm test`. Entry point is `src/main.js`.',
