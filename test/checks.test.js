@@ -662,6 +662,28 @@ test('instructions-accuracy: scoped npm package names are not stale paths', () =
   assert.doesNotMatch(stale.details, /@scope\/pkg`/);
 });
 
+test('instructions-accuracy: convention-root dirs (placeholder-subpath sibling) are not stale', () => {
+  // A template/monorepo documents `product/` as where code *will* live and also
+  // cites the placeholder child `product/<bet>/` (real: dough's studio template
+  // CLAUDE.md). The bare `product/` is correctly absent in a fresh checkout — a
+  // convention root populated on demand, not a stale path — so the `<...>` child
+  // exempts it. Same shape for `packages/<name>/`, `services/{svc}/`.
+  const r = instructionsAccuracy.run(ctxFor({
+    'CLAUDE.md': "Each venture's code lives under `product/<bet>/`; `product/` is created when there is one. Core is `src/index.js`.",
+    'src/index.js': 'x',
+  }));
+  assert.equal(r.score, 1, `${r.details}`);
+  assert.match(r.details, /resolve|no verifiable/);
+  // A real missing path with no placeholder sibling is still caught, and only the
+  // exact prefix is exempted — a different missing dir is not.
+  const stale = instructionsAccuracy.run(ctxFor({
+    'CLAUDE.md': 'Packages live in `packages/<name>/`; legacy build was in `vendor/old/`.',
+  }));
+  assert.ok(stale.score < 1, `got ${stale.score}`);
+  assert.match(stale.details, /vendor\/old/);
+  assert.doesNotMatch(stale.details, /packages/);
+});
+
 test('instructions-accuracy: references in a GEMINI.md are verified too', () => {
   const r = instructionsAccuracy.run(ctxFor({
     'GEMINI.md': 'Run `npm test`. Entry point is `src/main.js`.',
