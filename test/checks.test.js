@@ -377,6 +377,26 @@ test('setup-reproducibility: manifest without lockfile is flagged', () => {
   assert.match(r.fix, /lockfile/);
 });
 
+test('setup-reproducibility: a code repo with no root manifest is not labeled "docs-only"', () => {
+  // A Makefile-driven / subdir-manifest project (e.g. dough itself: .js source,
+  // tests via `make test`, no root package.json) has code — so the message must
+  // not contradict test-runnability/ci-config by guessing "docs-only repo?".
+  const r = setupReproducibility.run(ctxFor({
+    'Makefile': "test:\n\tnode --test\n",
+    'lib/app.js': 'export const x = 1;',
+    'README.md': '# Tool',
+  }));
+  assert.equal(r.score, 0.7, `expected neutral 0.7, got ${r.score}: ${r.details}`);
+  assert.doesNotMatch(r.details, /docs-only/);
+  assert.match(r.details, /root/);
+});
+
+test('setup-reproducibility: a genuine docs-only repo keeps the "docs-only repo?" message', () => {
+  const r = setupReproducibility.run(ctxFor({ 'README.md': '# Guide', 'docs/usage.md': 'how to' }));
+  assert.equal(r.score, 0.7);
+  assert.match(r.details, /docs-only/);
+});
+
 test('setup-reproducibility: a Ruby gem (gemspec) is not penalized for omitting Gemfile.lock', () => {
   // Gems conventionally gitignore Gemfile.lock — their deps resolve in the
   // consuming app — so the lockless state is correct, not a 0.3 misgrade.
