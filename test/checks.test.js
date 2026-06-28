@@ -125,6 +125,17 @@ test('test-runnability: default npm placeholder script does not count', () => {
   assert.equal(r.score, 0);
 });
 
+test('test-runnability: a docs/content-only repo is softened, not hard-failed', () => {
+  const r = testRunnability.run(ctxFor({ 'README.md': '# Guide', 'docs/usage.md': 'how to' }));
+  assert.ok(r.score > 0 && r.score < 1, 'no-code repo should be neutral, not 0 or full');
+  assert.match(r.details, /content-only|docs|no code/i);
+});
+
+test('test-runnability: a code repo with no tests still scores 0 (not softened)', () => {
+  const r = testRunnability.run(ctxFor({ 'src/app.py': 'print(1)' }));
+  assert.equal(r.score, 0);
+});
+
 test('test-runnability: Gradle/Java repo is recognized (src/test/java + wrapper)', () => {
   const r = testRunnability.run(ctxFor({
     'build.gradle.kts': 'plugins { java }',
@@ -520,10 +531,16 @@ test('repo-hygiene: a build/ of hand-written source is not a committed artifact 
     'a dist/ of compiled .js must stay flagged');
 });
 
-test('ci-config: no CI config scores 0 with a fix', () => {
-  const r = ciConfig.run(ctxFor({}));
+test('ci-config: a code repo with no CI config scores 0 with a fix', () => {
+  const r = ciConfig.run(ctxFor({ 'package.json': '{}', 'index.js': 'export const x = 1;' }));
   assert.equal(r.score, 0);
   assert.match(r.fix, /CI workflow/);
+});
+
+test('ci-config: a docs/content-only repo is softened, not hard-failed', () => {
+  const r = ciConfig.run(ctxFor({ 'README.md': '# Guide', 'docs/setup.md': 'steps' }));
+  assert.ok(r.score > 0 && r.score < 1, 'no-code repo should be neutral, not 0 or full');
+  assert.match(r.details, /content-only|docs/i);
 });
 
 test('ci-config: workflow without a test run gets partial credit', () => {
