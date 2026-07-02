@@ -551,6 +551,39 @@ test('repo-hygiene: a build/ of hand-written source is not a committed artifact 
     'a dist/ of compiled .js must stay flagged');
 });
 
+test('repo-hygiene: a build/ of authored TypeScript is not a committed artifact (hono shape)', () => {
+  // hono commits its build scripts + their tests as `build/*.ts`. No toolchain
+  // emits plain .ts (compilers emit .js/.d.ts), so non-declaration TS in an
+  // artifact-named dir is authored source and must NOT be flagged.
+  const tsBuild = repoHygiene.run(ctxFor({
+    '.gitignore': 'node_modules/\n',
+    'package.json': '{}',
+    'build/build.ts': 'export const build = () => {}',
+    'build/validate-exports.test.ts': 'test("x", () => {})',
+  }));
+  assert.equal(tsBuild.score, 1, 'a build/ of authored .ts source must not be flagged as an artifact dir');
+
+  // Declaration files are emitted output: a dist/ of .js + .d.ts (the typical
+  // published-library output tree) must stay flagged — .d.ts never exempts.
+  const declOutput = repoHygiene.run(ctxFor({
+    'package.json': '{}',
+    'dist/index.js': 'module.exports = {}',
+    'dist/index.d.ts': 'export declare const x: number;',
+  }));
+  assert.match(declOutput.details, /artifact directories not gitignored \(dist\)/,
+    'a dist/ of .js + .d.ts output must stay flagged');
+
+  // Generated-output markers still win: authored-looking .ts next to source
+  // maps means the dir is (also) build output — keep flagging it.
+  const mappedOutput = repoHygiene.run(ctxFor({
+    'package.json': '{}',
+    'build/index.ts': 'export {}',
+    'build/index.js.map': '{}',
+  }));
+  assert.match(mappedOutput.details, /artifact directories not gitignored \(build\)/,
+    'a build/ containing source maps is output and must stay flagged');
+});
+
 test('ci-config: a code repo with no CI config scores 0 with a fix', () => {
   const r = ciConfig.run(ctxFor({ 'package.json': '{}', 'index.js': 'export const x = 1;' }));
   assert.equal(r.score, 0);
